@@ -1,0 +1,257 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>node.js chat</title>
+  <link rel="stylesheet" type="text/css" href="common.css">
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.0/jquery-ui.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body >
+<div class="resizable">
+<table id="myTBL">
+  <tr>
+    <td>
+      <form id="navi">
+        <select id="contents0" onchange="selectNavi(0)">
+          <option>****</option>
+          <option>****</option>
+          <option>****</option>
+          <option>****</option>
+        </select>
+        <input type="button" id="add" value="+" onclick="addColumn()">
+      </form>
+      <input type='text' id='url0' value="http://****/" size='70' >
+      <input type='button' id='move' value='move' onclick='moveColumn(0)'>
+      <br>
+      <iframe src="http://****/" id="waku0" width="100%" height="100%" ></iframe> 
+    </td>
+  </tr>
+</table>
+</div>
+<div id="myTBL2" class="overview">
+  
+  <div class="state">
+    <span class="state" id="name">No name</span>
+    <span class="state" id="room">No room</span>
+  </div>
+ 
+  <!-- 入室前 -->
+  <div id="port-box" class="enter" ></div>
+  <div id="list-box" class="enter" ></div>
+  <p class="enter">ルーム入室</p>
+  <form action="" method="get" onsubmit="return false;">
+    <input class="enter" id="enterRoom" type="text" placeholder="room">
+    <input class="enter" id="enterName" type="text" placeholder="name">
+    <input class="enter" type="submit" onclick="roomPut();" value="入室" />
+  </form>
+   
+  <!-- 入室後 --> 
+  <form action="" method="post" onsubmit="return false;">
+    <input class="exit" id="message" type="text" size="47px" placeholder="message">
+    <input class="exit" type="submit" onclick="sendMessage();" value="送信" />
+  </from><br class="exit">
+ 
+  
+  <input class="exit" type="file" id="FileBox">
+  <button  type='button' id='UploadButton' class="exit">UpLoad</button>
+  <input type="button" class="exit" id="logread" value="LOG">
+  <input class="exit" type="button" onclick="roomOut();" value="退室" />
+  <p>&lt;メッセージ&gt;</p>
+  <div id="chat-box"></div>
+</div>
+ 
+<script type="text/javascript">
+  var jpURL = new Array(
+    'http://****/',
+    'http://****/',
+    'http://****/',
+    'http://****/'
+  );
+
+  function selectNavi(id) {
+    var select = document.getElementById("contents" + id).selectedIndex;
+    document.getElementById("waku"+id).src = jpURL[select];
+    document.getElementById("url"+id).value = jpURL[select];
+  }
+
+  function addColumn(){ // 列追加 
+    var tblObj = document.getElementById("myTBL"); // tblObj 対象のテーブル
+    var rowCnt = tblObj.rows.length; // テーブルの行数
+    var row = tblObj.insertRow(rowCnt); // 行の末尾に,新規行を追加
+    // セルの数だけループして
+    var cell = row.insertCell(0);// 追加した行にセルを挿入
+    cell.innerHTML ="<form id='navi'><select id='contents"+rowCnt+"' onchange='selectNavi("+rowCnt+")'><option>****</option><option>****</option><option>****</option><option>****</option></select><input type='button' id='add' value='+' onclick='addColumn()'></form><input type='button' id='dele"+rowCnt+"' value='x' onclick='deleColumn("+rowCnt+")'><input type='text' id='url"+rowCnt+"' value='http://****/' size='70' ><input type='button' id='move' value='move' onclick='moveColumn("+rowCnt+")'><br><iframe src='http://****/' id='waku"+rowCnt+"' width='100%' height='94%' ></iframe>"; 
+  }
+
+  function deleColumn(id){ 
+     $("#dele"+id).parent().remove();
+  }
+
+  function moveColumn(id) {
+    document.getElementById("waku"+id).src = document.getElementById("url"+id).value;
+  }
+ 
+  var s = io.connect();   //リモート
+  //var s = io.connect('http://127.0.0.1:3000'); //ローカル
+ 
+  // サーバから受け取るイベント
+  // 接続時
+  s.on("connect", function () {});
+  // 切断時
+  s.on("disconnect", function () {});
+  // サーバーからのメッセージ
+  // チャット受信
+  s.on('message', function(message) {
+    appendMessage(message);
+  });
+  // 接続人数の受信
+  s.on('port', function(count) {
+    document.getElementById("port-box").innerHTML = "接続人数:"+count.value;
+  });
+ 
+  //クライアントからイベント送信（イベント名は自由に設定できます）
+  // メッセージ送信
+  function sendMessage() {
+    var msg = "[" + document.getElementById("name").innerHTML + "]"+ $("#message").val();
+    s.emit("message", {mess : msg});
+    $('#message').val('').focus();
+  }
+  // ルーム入室/退室/リスト更新
+  function roomPut() {
+    enterButton_Vibility();
+    var room = $("#enterRoom").val();
+    var name = $("#enterName").val();
+    s.emit("enter", {room:room, name:name});
+    document.getElementById("name").innerHTML = name;
+    document.getElementById("room").innerHTML = room;
+  }
+  function roomOut() {
+    exitButton_Vibility();
+    var room = $("#enterRoom").val();
+    var name = $("#enterName").val();
+    document.getElementById("name").innerHTML = "No name";
+    document.getElementById("room").innerHTML = "No room";
+    s.emit("exit", {room:room, name:name});
+  }
+  // リスト更新を受信
+  s.on("roomList", function(roomList) {
+    $("#list-box").text("");
+    $("#list-box").prepend("<ul>");
+    if(roomList) {
+      for(var j in roomList) {
+        var roomLcount = roomList[j];
+        var roomName = j;
+        $("#list-box").prepend("<li class='NaCo'>" + roomName + "（" + roomLcount + " / 20）</li>");
+      }
+    } else {
+      $("#list-box").prepend("ルーム情報を取得できませんでした.");
+    }
+    $("#list-box").prepend("</ul>");
+  });
+  
+  // 受信メッセージを表示
+  function appendMessage (message) {
+    $("div#chat-box").prepend("<div class='msg'>" + message + "</div>");
+  }
+  function clickNaCo(){
+      $(".NaCo").live("click", function(){
+          $(this).css("background-color", "#D6D6D6");
+      });
+  }
+  
+  // 画面推移
+  function enterButton_Vibility() {
+    var obj = document.getElementsByTagName("*");
+    for(var i in obj){
+      if(obj[i].className == 'enter') {
+        obj[i].style.display = 'none';
+      } else if (obj[i].className == 'exit') {
+        obj[i].style.display = 'inline';
+      }
+    }
+  }
+  function exitButton_Vibility() {
+    var obj = document.getElementsByTagName("*");
+    for(var i in obj){
+      if(obj[i].className == 'enter'){
+        obj[i].style.display = 'inline';
+      } else if (obj[i].className == 'exit') {
+        obj[i].style.display = 'none';
+      }
+    }
+  }
+
+  // File受信
+  s.on('notify', function (data) {
+    var fileName = data.name;
+    var fileData = data.url;
+    var fileTypes = fileName.split(".");
+    var len = fileTypes.length;
+    var ret = fileTypes[len - 1];
+    if (ret == 'jpg' ||ret == 'png'||ret == 'gif'||ret == 'jpeg') {
+      $("div#chat-box").prepend("<div class='msg'><p style='margin-bottom:0px;'>["+ data.usr + "]</p><a href='' id='downloadlink' target='_blank'><img src='" + fileData + "' height='auto' width='400px'></a></div>" );
+    } else {
+      $("div#chat-box").prepend("<div class='msg'>[" + data.usr +"]"+"<a href='' id='downloadlink' target='_blank'>" + fileName + "</a></div>");
+    }
+
+     $("#downloadlink").click(function () {
+      if (ret == 'xls'||ret == 'xlsx'||ret == 'ods'||ret == 'xlsm') {
+        alert('Excelファイルはdownload出来ません');
+        return false;
+      } else if (!confirm(fileName +'をdownloadします\nよろしいですか？')) {
+        return false;
+      } else {
+        $("#downloadlink").attr("href", fileData);
+        $("#downloadlink").attr("download", fileName);
+      }
+     });
+  });
+
+  // FileUpload
+  $("#UploadButton").click(function (e) {
+     var input = $("#FileBox").get(0);
+     var file = input.files[0];
+     var name = file.name;
+
+     var reader = new FileReader();
+     reader.onloadend = function (e) {
+         var data = e.target.result;
+         if (!data) {
+             return ;
+         }
+         s.emit('msg upload', {name : name, data : data});
+     };
+     reader.readAsDataURL(file);
+    $('#FileBox').val('');
+  });
+
+  // ログ受信 download
+  s.on('readFile', function (data) {
+    var fileName = data.name;
+    var fileData = "data:text/plain;base64,77u/"+ data.txt;
+    if(fileName != 'nofile') {
+      $("div#chat-box").prepend("<div class='msg'>[log]"+"<a href='' id='downloadlink' target='_blank'>" + fileName + "</a></div>");
+    } else {
+      alert('該当するファイルがありません');
+    }
+
+    $("#downloadlink").click(function () {
+      if (!confirm(fileName +'をdownloadします\nよろしいですか？')) {
+        return false;
+      } else {
+        $("#downloadlink").attr("href", fileData);
+        $("#downloadlink").attr("download", fileName);
+      }
+    });
+  });
+
+  // ログUpload
+  $("#logread").click(function () {
+    var logread = 'read';
+    s.emit("read", logread);
+  });
+  </script>
+</body>
+</html>

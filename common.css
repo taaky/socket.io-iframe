@@ -1,0 +1,47 @@
+﻿html , body {
+  height: 100%;
+  background-color: #f0ffff;
+}
+td {
+  vertical-align:top; 
+  width:100%; 
+  height:570px;
+}
+#myTBL {
+  width: 100%; 
+  height: 100%;
+}
+#myTBL2 {
+  width: 32%;
+  height: 93%;
+  position:fixed; top:15px; right:5px; 
+  overflow-y:scroll; 
+  border: 1px #000000 solid;  
+  background-color: #fffff0;
+}
+#logs {
+  list-style-type: none;
+}
+#navi {
+  display: inline;
+}
+.resizable {
+  overflow: hidden; /* chromeはautoじゃないとresizeできない*/
+  resize: horizontal;
+  width: 67%; 
+  min-height: 95%;
+  position: relative;  z-index: 1;
+  background-color: #fffff0;
+}
+.enter {
+  display: "";
+}
+.exit {
+  display: none;
+}
+.state {
+  width: 100%;
+  height: 20px;
+  background-color: black;
+  color: white;
+}
